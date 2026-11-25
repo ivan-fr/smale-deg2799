@@ -1,6 +1,7 @@
 # A Machine-Certified Degree-2,799 Counterexample to Smale's Mean Value Conjecture
 
 [![Exact Machine Certification (pandroots 0.31.0)](https://github.com/ivan-fr/smale-deg2799/actions/workflows/ci.yml/badge.svg)](https://github.com/ivan-fr/smale-deg2799/actions/workflows/ci.yml)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24531472.svg)](https://doi.org/10.5281/zenodo.24531472)
 
 **Author:** Ivan Besevic (ESIEE-IT, France — `ivan.besevic@edu.esiee-it.fr`)
 
