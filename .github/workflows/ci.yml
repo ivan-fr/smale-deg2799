@@ -1,0 +1,33 @@
+name: Exact Machine Certification (pandroots 0.31.0)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust 1.85+ toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo registry and build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run full 100% exact pandroots-0.31.0 machine certification (deg 2,799)
+        run: cargo run --release --bin certify_smale
+
+      - name: Setup Python and install mpmath
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Independent 500-digit mpmath verification
+        run: |
+          pip install --quiet mpmath
+          python3 verify_independent.py data/champion_deg2799.gpoly data/champion_deg2799.seeds 2037

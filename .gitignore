@@ -1,0 +1,9 @@
+/target
+*.aux
+*.log
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+.DS_Store
+__pycache__/

@@ -1,0 +1,18 @@
+[package]
+name = "smale-deg2799"
+version = "1.0.0"
+edition = "2024"
+rust-version = "1.85"
+authors = ["Ivan Besevic <ivan.besevic@edu.esiee-it.fr>"]
+description = "Machine-certified degree-2,799 counterexample to Smale's Mean Value Conjecture, certified with pandroots 0.31.0"
+license = "MIT"
+
+[dependencies]
+pandroots = "0.31.0"
+num-bigint = "0.4"
+num-traits = "0.2"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

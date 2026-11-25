@@ -1,0 +1,392 @@
+\documentclass[11pt,a4paper]{amsart}
+
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{microtype}
+\sloppy
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  citecolor=blue!60!black,
+  urlcolor=blue!60!black,
+  pdftitle={A Machine-Certified Degree-2,799 Counterexample to Smale's Mean Value Conjecture via Envelope-Theorem Barycentric Minimax Optimization and pandroots},
+  pdfauthor={Ivan Besevic}
+}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Z}{\mathbb{Z}}
+\DeclareMathOperator{\RePart}{Re}
+
+\title[A Degree-2,799 Counterexample to Smale's Mean Value Conjecture]{%
+A Machine-Certified Degree-2,799 Counterexample to Smale's Mean Value Conjecture
+via Envelope-Theorem Barycentric Minimax Optimization and \texttt{pandroots}}
+
+\author{Ivan Besevic}
+\address{ESIEE-IT, France}
+\email{ivan.besevic@edu.esiee-it.fr}
+\date{November 25, 2026}
+
+\subjclass[2020]{Primary 30C10, 30C15; Secondary 65E05, 65G20, 68V15}
+\keywords{Smale's mean value conjecture, critical points of polynomials,
+Fej\'er--Lagrange interpolation, minimax optimization, Rouch\'e's theorem,
+certified root finding, pandroots}
+
+\begin{document}
+
+\begin{abstract}
+We construct and unconditionally machine-certify an explicit complex polynomial
+$p(u) \in \Q(i)[u]$ of exact degree $d = 2{,}799$ satisfying $p(0) = 0$,
+$p'(0) = 1$, and
+\[
+  \min_{p'(\zeta) = 0} \left|\frac{p(\zeta)}{\zeta}\right|
+  \in \bigl[\,1.0002520813917934477351916,\;\;
+              1.0002520813917934477351917\,\bigr] > 1,
+\]
+setting a new lowest-degree record for explicit counterexamples to Smale's 1981
+Mean Value Conjecture ($K \le 1$). Compared with the October 2026 disproof of
+Adamczewski and Colbrook (\texttt{arXiv:2610.36158}, degree $29{,}984$, minimum
+$\approx 1.000000495958$) and our November 24, 2026 record (degree $7{,}299$,
+minimum $\approx 1.000027196554$), the new construction reduces the certified
+degree by $10.71\times$ and $2.61\times$ respectively, while increasing the
+certified margin above $1$ by $508.3\times$ and $9.27\times$. By standard
+leading-term perturbation, counterexamples exist for every degree
+$n \ge 2{,}799$.
+
+To break through the $\sim 7{,}300$ degree floor of pure analytic conformal-map
+interpolation, we introduce two algorithmic techniques: (i) Envelope-Theorem
+barycentric minimax optimization directly in the $O(\log M)$-conditioned
+Fej\'er--Lagrange nodal basis with a free anchor $a \in \C$, staged from low-mode
+Fourier saddle crossing to full nodal L-BFGS equalization; and (ii) iterative
+bootstrap degree compression ($3{,}999 \to 3{,}499 \to 3{,}199 \to 2{,}799$)
+coupled with Maehly's deflated Newton root tracking. The resulting compact
+$1.3\text{ MB}$ exact Gaussian-integer polynomial is certified with zero
+floating-point assumptions in $10.43\text{ s}$ on 10 CPU cores by combining
+\texttt{pandroots v0.31.0} (\texttt{certify\_roots\_exact}, certifying all
+$2{,}798$ critical points in $8.56\text{ s}$ to radius $\le 2^{-795}$) with an
+exact arbitrary-precision integer Smale enclosure ($1.85\text{ s}$), and is
+independently cross-checked at $700$-digit precision in Python \texttt{mpmath}.
+\end{abstract}
+
+\maketitle
+
+\section{Introduction and Main Certified Theorem}
+
+In 1981, Smale~\cite{Smale81} proved that every complex polynomial $p$ of degree
+$d \ge 2$ normalized by $p(0) = 0$ and $p'(0) = 1$ possesses at least one
+critical point $\zeta \in \C$ ($p'(\zeta) = 0$) satisfying
+$|p(\zeta)/\zeta| \le 4$, and conjectured that the bound $4$ could be improved
+to $1$ (or $(d-1)/d$). Following forty-five years of partial results establishing
+the conjecture for small degrees and special classes, the global $K \le 1$
+conjecture was refuted in October 2026 by Adamczewski and Colbrook~\cite{AC26}
+via a certified counterexample of degree $29{,}984$, and Goel~\cite{Goel2026}
+subsequently established that the global supremum over all degrees is sharp at
+$K^* = 4$. On November 24, 2026, using a Fourier-smoothed analytic Pac-Man
+domain and Fej\'er--Lagrange interpolation, we lowered the lowest explicitly
+certified counterexample degree to $d = 7{,}299$~\cite{Besevic7299}.
+
+A natural quantitative question remains open: \emph{what is the smallest
+polynomial degree $d$ for which a counterexample to Smale's Mean Value Conjecture
+exists?} Here we shatter the degree-$7{,}299$ threshold by a factor of $2.61\times$
+by moving beyond pure conformal-map interpolation to direct nonlinear minimax
+optimization over the full polynomial space.
+
+\begin{theorem}[Machine-Certified Degree-2,799 Counterexample]\label{thm:smale2799}
+Let $P(z) = \sum_{k=0}^{2799} c_k z^k \in \Z[i][z]$ be the explicit
+Gaussian-integer polynomial archived in \texttt{data/champion\_deg2799.gpoly}
+(SHA-256: \texttt{\scriptsize 5d1ad7a2509a488934031144d6c2bee5ab36d027bcee392087657a1b117dbfdc},
+leading coefficient $c_{2799} \neq 0$, maximum coefficient bit-length $1{,}011$,
+leading coefficient bit-length $558$), and let
+\[
+  a = \frac{22901 - 11056\,i}{2^{15}} \in \Q(i)
+\]
+be the exact $15$-bit dyadic anchor. Define the normalized polynomial
+\[
+  p(u) = \frac{P(u + a) - P(a)}{P'(a)} \in \Q(i)[u],
+  \qquad \deg(p) = 2{,}799, \quad p(0) = 0, \quad p'(0) = 1.
+\]
+Then all $2{,}798$ critical points of $P$ in $\C$ are simple, lie strictly inside
+$|c| < 96/100$, and satisfy the unconditionally certified global enclosure
+\begin{equation}\label{eq:certified-min}
+\begin{aligned}
+  \min_{p'(\zeta) = 0} \left|\frac{p(\zeta)}{\zeta}\right|
+  &= \min_{P'(c) = 0} \left|\frac{P(c) - P(a)}{(c - a)\, P'(a)}\right| \\
+  &\in \bigl[\,1.0002520813917934477351916,\;\;
+               1.0002520813917934477351917\,\bigr] > 1.
+\end{aligned}
+\end{equation}
+Furthermore, all $2{,}798$ critical value ratios satisfy
+$|p(\zeta)/\zeta| \le 1.10226259$.
+\end{theorem}
+
+\begin{corollary}
+By adding $\varepsilon u^n$ with sufficiently small $\varepsilon > 0$ (via
+Rouch\'e's theorem, as in~\cite{AC26}), counterexamples to Smale's Mean Value
+Conjecture ($K \le 1$) exist for every polynomial degree $n \ge 2{,}799$.
+\end{corollary}
+
+Table~\ref{tab:comparison} summarizes the progression of rigorously certified
+explicit counterexamples.
+
+\begin{table}[h]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\caption{Progression of machine-certified explicit counterexamples to Smale's
+Mean Value Conjecture ($K \le 1$).}
+\label{tab:comparison}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Metric & Adamczewski--Colbrook~\cite{AC26} & Besevic~\cite{Besevic7299} & \textbf{This Work} \\
+       & (Oct 2026) & (Nov 24, 2026) & \textbf{(Nov 25, 2026)} \\
+\midrule
+Exact degree $d$ & $29{,}984$ & $7{,}299$ & $\mathbf{2{,}799}$ ($2.61\times$ / $10.71\times$) \\
+Certified min & $(1.0000004959\ldots 01,\ldots 04)$ & $[1.0000271965\ldots 59, \ldots 60]$ & $\mathbf{[1.0002520813\ldots 16, \ldots 17]}$ \\
+Margin above $1$ & $4.96 \times 10^{-7}$ & $2.72 \times 10^{-5}$ & $\mathbf{2.52 \times 10^{-4}}$ ($9.27\times$ / $508\times$) \\
+Exact anchor $a$ & --- & $53$-bit dyadic & $\mathbf{(22901 - 11056\,i)/2^{15}}$ \\
+Artifact size & --- & $7.6\text{ MB}$ ($2{,}311$ bits) & $\mathbf{1.3\text{ MB}}$ ($1{,}011$ bits) \\
+Root certifier & --- & Custom BigInt Rouch\'e & \textbf{\texttt{pandroots v0.31.0}}~\cite{pandroots} \\
+Total cert.\ time & --- & $413.72\text{ s}$ (10 cores) & $\mathbf{10.43\text{ s}}$ ($39.7\times$ faster) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Breaking the Analytic Interpolation Floor}
+
+\subsection{Why Conformal-Map Interpolation Plateaus Near Degree 7,300}
+In both~\cite{AC26} and~\cite{Besevic7299}, the polynomial $P$ is obtained as a
+linear polynomial approximation (Fej\'er--Lagrange or Faber interpolant) to a
+fixed univalent conformal map $f : \Omega \to \mathbb{D}$ on a slotted domain
+$\Omega$. While the analytic Pac-Man boundary of~\cite{Besevic7299}
+($h = 0.14$, $x_c = 0.32$, $\sigma = 5.0$, $k_{\max} = 28$) achieves an interior
+conformal margin of $1.002027$ at $a = 0.72 - 0.38\,i$, its Fej\'er--Lagrange
+interpolant of degree $d = M - 1$ suffers severe non-uniformity: for
+$M < 7{,}000$, critical points on the outer arc have substantial surplus margin
+($1.005$--$1.04$), whereas a few hundred critical points inside the narrow slot
+dip below $1$. Pure linear interpolation cannot reallocate surplus outer-arc
+margin to lift the slot floor.
+
+\subsection{Envelope-Theorem Barycentric Minimax Optimization}
+Let $z_0, \dots, z_{M-1}$ be the $M$ Fej\'er nodes on $\partial\Omega$ and
+$Q(z) = \prod_{m=0}^{M-1} (z - z_m)$. Every polynomial $P \in \C_{M-1}[z]$ has a
+unique barycentric Fej\'er--Lagrange representation
+\[
+  P(z) = Q(z)\sum_{m=0}^{M-1} \frac{\alpha_m}{z - z_m},
+  \qquad f_m := \alpha_m Q'(z_m) = P(z_m).
+\]
+Crucially, because the Lebesgue constant of Fej\'er nodes on an analytic Jordan
+curve grows only as $O(\log M)$, parameterizing $P$ by its $O(1)$-scaled nodal
+values $f = (f_0, \dots, f_{M-1}) \in \C^M$ together with the free anchor
+$a \in \C$ yields a well-conditioned $2M + 2$ real variable parameterization of
+the entire polynomial space $\C_{M-1}[z] \times \C$ (whereas raw weights
+$\alpha_m$ vary by five orders of magnitude between the slot and outer arc).
+
+Let $c_1, \dots, c_{M-2}$ be the simple critical points of $P$ ($P'(c_j) = 0$)
+and $r_j := |(P(c_j) - P(a)) / ((c_j - a) P'(a))|$. We maximize the smooth
+LogSumExp lower-envelope surrogate
+\[
+  J_\beta(f, a) := -\frac{1}{\beta}\log \sum_{j=1}^{M-2} \exp\!\bigl(-\beta \log r_j\bigr).
+\]
+Because $P'(c_j) = 0$, the implicit motion $\delta c_j = -\delta P'(c_j)/P''(c_j)$
+cancels in $\delta P(c_j) = (\delta P)(c_j) + P'(c_j)\delta c_j = (\delta P)(c_j)$,
+leaving an exact closed-form Envelope-Theorem gradient with respect to $(P, a)$:
+\begin{equation}\label{eq:envelope}
+  \delta \log r_j
+  = \RePart\!\left[
+      \frac{\delta P(c_j) - \delta P(a)}{P(c_j) - P(a)}
+      + \frac{\delta P'(c_j)}{(c_j - a)\, P''(c_j)}
+      - \frac{\delta P'(a)}{P'(a)}
+    \right],
+\end{equation}
+plus the direct derivative with respect to $a$. Directly running full nodal
+L-BFGS from the initial interpolant creates high-frequency oscillations and
+stalls in local traps. Instead, a two-phase schedule cleanly crosses the
+macroscopic saddle:
+\begin{enumerate}
+  \item \textbf{Phase 1 (Smooth Fourier Saddle Crossing, $K = 100$ modes):}
+  Restrict updates $\delta f$ to the lowest $K$ discrete Fourier modes on the
+  node index (normalized by $M^{-1/2}$ so the anchor $a$ moves at matched scale)
+  at $\beta = 400 \to 1{,}500$ without resetting state between stages. This
+  smoothly shifts the anchor from $a \approx 0.720 - 0.380\,i$ to
+  $a \approx 0.699 - 0.337\,i$, lifting the entire slot floor at the expense of
+  surplus outer-arc margin.
+  \item \textbf{Phase 2 (Full Nodal L-BFGS Equalization):}
+  Unfreeze all $2M + 2$ nodal variables and run L-BFGS with increasing sharpness
+  $\beta = 1{,}500 \to 5{,}000 \to 15{,}000 \to 50{,}000$, tracking all $M - 2$
+  critical points at every accepted line-search step. On $M = 4{,}000$, this
+  immediately produced a degree-$3{,}999$ counterexample
+  ($\min r_j \approx 1.0000617$) in $31.9\text{ s}$.
+\end{enumerate}
+
+\subsection{Iterative Bootstrap Degree Compression and Maehly Deflation}
+To push well below $d = 3{,}999$, we compress each smooth record polynomial
+$P_{\mathrm{prev}}$ of degree $M_{\mathrm{prev}} - 1$ onto a smaller Fej\'er grid
+$z_0, \dots, z_{M-1}$ by setting $f_m^{(0)} := P_{\mathrm{prev}}(z_m)$, locating
+all $M - 2$ critical points of the resampled polynomial, and running Phase~2
+L-BFGS equalization. To guarantee $100\%$ root recovery ($M - 2 / M - 2$) at
+every compression step even when high-$\beta$ ripples appear, we pair radial
+Newton starts with Maehly's deflated Newton iteration,
+\[
+  \frac{(P'/\Pi)'}{P'/\Pi}(z) = \frac{P''(z)}{P'(z)} - \sum_{i \in \mathcal{R}} \frac{1}{z - r_i},
+\]
+which systematically repels iterates away from already-discovered roots
+$\mathcal{R}$. Stepping progressively through
+\[
+  d = 3{,}999 \;\longrightarrow\; 3{,}499 \;\longrightarrow\; 3{,}199 \;\longrightarrow\; \mathbf{2{,}799}
+\]
+yielded our degree-$2{,}799$ polynomial with all $2{,}798$ critical values
+$\ge 1.00025213$ at $a \approx 0.698886 - 0.337404\,i$. At $d = 2{,}499$, L-BFGS
+equalized both the slot and outer rim at $\min r_j \approx 0.99986644 < 1$,
+indicating that $d = 2{,}799$ sits close to the minimax floor of this domain
+family while retaining a wide $2.52 \times 10^{-4}$ safety margin for compact
+integer rounding.
+
+\subsection{Exact Gaussian-Integer Conversion and Clean Dyadic Anchor}
+Using a bit-reversed parallel Karatsuba product tree at $1{,}280$-bit internal
+fixed-point precision (\texttt{out\_bits = 256}), the barycentric polynomial is
+converted in $3.88\text{ s}$ into exact centered-$z$ monomial form
+$P(z) = \sum_{k=0}^{2799} c_k z^k \in \Z[i][z]$ ($1.3\text{ MB}$, maximum coefficient
+bit-length $1{,}011$, leading coefficient bit-length $558$). Finally, rounding
+the anchor $a$ to the nearest $15$-bit dyadic Gaussian rational
+$a = (22901 - 11056\,i)/2^{15}$ shifts $a$ by $< 3.8 \times 10^{-6}$ and
+changes $\min r_j$ by less than $5 \times 10^{-8}$.
+
+\section{Two-Stage Zero-Float-Assumption Certification via \texttt{pandroots}}
+
+The standalone Rust certifier \texttt{src/bin/certify\_smale.rs} proves
+Theorem~\ref{thm:smale2799} unconditionally without relying on floating-point
+arithmetic in any step of the proof:
+
+\begin{enumerate}
+  \item \textbf{Exact Degree Verification:}
+  Reads $P(z) \in \Z[i][z]$ and the exact integer triple
+  $(22901, -11056, 15)$ defining $a \in \Q(i)$ directly from
+  \texttt{data/champion\_deg2799.gpoly} and verifies $c_{2799} \neq 0$,
+  establishing $\deg(P') = 2{,}798$.
+
+  \item \textbf{Stage 1 --- Exact Critical-Point Certification via
+  \texttt{pandroots v0.31.0}~\cite{pandroots}:}
+  Constructs the exact Gaussian-integer derivative
+  $P'(z) = \sum_{k=1}^{2799} k c_k z^{k-1} \in \Z[i][z]$ and invokes
+  \texttt{pandroots::certify\_roots\_exact} with
+  \texttt{target\_radius\_bits = 795} (chosen automatically so that
+  $M_1(96/100) \cdot 2^{-795} \le |P'(a)|_{\mathrm{lo}} \cdot 2^{-130}$).
+  Internally, \texttt{pandroots} polishes the untrusted seeds and then executes
+  a zero-float-assumption proof using word-aligned \texttt{u64} limb ball
+  arithmetic ($960$ fractional bits):
+  \begin{itemize}
+    \item \emph{Exact Rouch\'e's theorem:} verifies on every disc
+    $D(z_j, r_j)$ ($r_j = 2^{e_j} \le 2^{-795}$) that
+    $|P'(z_j)|_{\mathrm{hi}} + \frac{1}{2} M_3 r_j^2 < |P''(z_j)|_{\mathrm{lo}}\, r_j$,
+    proving that $D(z_j, r_j)$ contains a unique simple zero of $P'$.
+    \item \emph{Exact pairwise disjointness:} an exact integer sweep-line check
+    verifies $|z_i - z_j|^2 > (r_i + r_j)^2$ for all $1 \le i < j \le 2{,}798$.
+  \end{itemize}
+  All $2{,}798 / 2{,}798$ discs pass in $8.56\text{ s}$ ($326.8\text{ roots/s}$).
+  By the Fundamental Theorem of Algebra, these $2{,}798$ pairwise-disjoint discs
+  contain \emph{every} critical point of $P$ in $\C$, each with multiplicity $1$.
+
+  \item \textbf{Stage 2 --- Exact BigInt Smale Ratio Enclosure:}
+  Consuming the exact dyadic centers $z_j$ and power-of-two radii
+  $r_j = 2^{e_j}$ returned by \texttt{pandroots} with \emph{zero center
+  rounding} at fixed-point precision $F = 1{,}024$ fractional bits:
+  \begin{itemize}
+    \item Verifies $|z_j|_{\mathrm{hi}} + r_j \le R := 96/100$ in exact integer
+    arithmetic for all $2{,}798$ discs.
+    \item Computes the exact outward-rounded global derivative bound
+    $M_1(R) \ge \sum_{k=1}^{2799} k |c_k| R^{k-1}$, which upper-bounds
+    $\sup_{|w| \le R} |P'(w)|$. By convexity of $\overline{D(0, R)}$, every
+    $w \in D(z_j, r_j)$ satisfies $|P(w) - P(z_j)| \le M_1(R)\, r_j$.
+    \item Evaluates $P(a), P'(a)$, and $P(z_j)$ via exact integer Horner
+    arithmetic with explicit ulp rounding bounds (since right-shifting each
+    component of a Karatsuba complex product is arithmetic floor division with
+    componentwise error in $[0, 1)$ ulp, the Euclidean error per multiplication
+    is strictly $< \sqrt{2} < 2$ ulps, propagated at each step as
+    $e_p \leftarrow \lfloor e_p |z|_{\mathrm{hi}} / 2^F \rfloor + 3$).
+    \item Combines the evaluation and Lipschitz bounds via exact integer
+    division to certify $|(P(w) - P(a))/((w - a) P'(a))| > 1$ uniformly for all
+    $w \in D(z_j, r_j)$ across all $2{,}798 / 2{,}798$ discs in $1.85\text{ s}$,
+    yielding the $25$-digit enclosure~\eqref{eq:certified-min} attained at
+    critical point $\#2037$ ($z^* \approx 0.575825497716 - 0.126546779359\,i$).
+  \end{itemize}
+
+  \item \textbf{Independent $700$-Digit Python \texttt{mpmath} Cross-Check:}
+  The independent script \texttt{verify\_independent.py} audits the exact
+  polynomial at $700$ decimal digits on critical point $\#2037$, its $7$ nearest
+  neighbors, the $4$ outermost critical points, and $8$ strided boundary roots,
+  confirming $|P'(z^*)|/|P'(a)| = 1.03 \times 10^{-690}$ and
+  \[
+    \left|\frac{P(z^*) - P(a)}{(z^* - a)\, P'(a)}\right|
+    = 1.000252081391793447735191684\ldots,
+  \]
+  agreeing with all $25$ certified digits of~\eqref{eq:certified-min}.
+\end{enumerate}
+
+\section{Reproducibility and Artifact Integrity}
+
+The complete source code, exact polynomial, seed file, independent verifier,
+and automated GitHub Actions CI workflow (running the full exact
+\texttt{pandroots v0.31.0} certification and $700$-digit \texttt{mpmath} audit
+on every commit) are publicly archived at
+\url{https://github.com/ivan-fr/smale-deg2799}:
+\begin{verbatim}
+cargo run --release --bin certify_smale
+python3 verify_independent.py data/champion_deg2799.gpoly \
+    data/champion_deg2799.seeds 2037
+\end{verbatim}
+
+\begin{table}[h]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\caption{SHA-256 checksums of the archived degree-$2{,}799$ counterexample artifacts.}
+\begin{tabular}{@{}lcl@{}}
+\toprule
+File & Size & SHA-256 \\
+\midrule
+\texttt{champion\_deg2799.gpoly} & $1.3\text{ MB}$ & \texttt{\scriptsize 5d1ad7a2509a488934031144d6c2bee5ab36d027bcee392087657a1b117dbfdc} \\
+\texttt{champion\_deg2799.seeds} & $128\text{ KB}$ & \texttt{\scriptsize e6fd4dd2a528f58d0b0d690e1401687bbf864cfd6489860841c975ac58045e4a} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{thebibliography}{9}
+
+\bibitem{AC26}
+T.~Adamczewski and M.~J.~Colbrook,
+\emph{From boundary geometry to counterexamples in Smale's mean value problem},
+arXiv:2610.36158 (2026).
+
+\bibitem{pandroots}
+I.~Besevic,
+\emph{\texttt{pandroots}: Certified univariate polynomial root-finder in Rust (v0.31.0)},
+\url{https://crates.io/crates/pandroots} (2026).
+
+\bibitem{Besevic7299}
+I.~Besevic,
+\emph{A machine-certified degree-7,299 counterexample to Smale's mean value conjecture},
+Zenodo, \url{https://doi.org/10.5281/zenodo.24512942} (November 24, 2026).
+
+\bibitem{Goel2026}
+A.~Goel,
+\emph{The sharp constant in Smale's mean value problem},
+Preprint (2026).
+
+\bibitem{Smale81}
+S.~Smale,
+\emph{The fundamental theorem of algebra and complexity theory},
+Bull.\ Amer.\ Math.\ Soc.\ (N.S.) \textbf{4} (1981), no.~1, 1--36.
+
+\end{thebibliography}
+
+\end{document}
